@@ -7,8 +7,8 @@
  */
 
 export interface EncryptionConfig {
-  strategy: string;
-  implementation: string[];
+  algorithm: string;
+  keyRotation: string;
 }
 
 export interface DataProtectionConfig {
@@ -28,48 +28,18 @@ export interface DataProtectionConfig {
 }
 
 export interface AuthenticationConfig {
-  userAuthentication: {
-    strategy: string;
-    implementation: string[];
-  };
-  apiSecurity: {
-    strategy: string;
-    implementation: string[];
-  };
-  sessionManagement: {
-    strategy: string;
-    implementation: string[];
-  };
+  mfa: boolean;
+  sessionTimeout: string;
 }
 
 export interface SecureDevelopmentConfig {
-  secureSDLC: {
-    strategy: string;
-    implementation: string[];
-  };
-  codeQuality: {
-    strategy: string;
-    implementation: string[];
-  };
-  vulnerabilityManagement: {
-    strategy: string;
-    implementation: string[];
-  };
+  codeSigning: boolean;
+  dependencyScanning: boolean;
 }
 
 export interface TransactionSecurityConfig {
-  nonRepudiation: {
-    strategy: string;
-    implementation: string[];
-  };
-  fraudPrevention: {
-    strategy: string;
-    implementation: string[];
-  };
-  reconciliation: {
-    strategy: string;
-    implementation: string[];
-  };
+  fraudDetection: boolean;
+  rateLimiting: boolean;
 }
 
 export interface InfrastructureSecurityConfig {
@@ -88,18 +58,8 @@ export interface InfrastructureSecurityConfig {
 }
 
 export interface ComplianceConfig {
-  regulatoryCompliance: {
-    strategy: string;
-    implementation: string[];
-  };
-  privacyByDesign: {
-    strategy: string;
-    implementation: string[];
-  };
-  transparencyAndControl: {
-    strategy: string;
-    implementation: string[];
-  };
+  gdpr: boolean;
+  pci: boolean;
 }
 
 export interface IncidentResponseConfig {
@@ -122,154 +82,31 @@ export interface IncidentResponseConfig {
 }
 
 export interface SecurityFramework {
-  dataProtection: DataProtectionConfig;
-  authenticationAndAuthorization: AuthenticationConfig;
+  encryption: EncryptionConfig;
+  authentication: AuthenticationConfig;
   secureDevelopment: SecureDevelopmentConfig;
   transactionSecurity: TransactionSecurityConfig;
   infrastructureSecurity: InfrastructureSecurityConfig;
-  complianceAndPrivacy: ComplianceConfig;
+  compliance: ComplianceConfig;
   incidentResponse: IncidentResponseConfig;
 }
 
 export const securityFramework: SecurityFramework = {
-  dataProtection: {
-    encryption: {
-      dataAtRest: {
-        strategy: "Field-level encryption for sensitive data",
-        implementation: [
-          "Personal identifiable information (PII) and financial data encrypted with AES-256",
-          "Encryption keys managed through HashiCorp Vault with regular rotation",
-          "Separate encryption keys for different data categories (personal vs. financial)",
-          "Database-level encryption for the entire data store"
-        ]
-      },
-      dataInTransit: {
-        strategy: "End-to-end encryption for all communications",
-        implementation: [
-          "TLS 1.3 for all API communications",
-          "Certificate pinning in mobile applications",
-          "Secure WebSockets for real-time updates",
-          "Perfect Forward Secrecy (PFS) to protect past communications"
-        ]
-      },
-      keyManagement: {
-        strategy: "Robust encryption key lifecycle management",
-        implementation: [
-          "Automated key rotation every 90 days",
-          "Hardware Security Modules (HSMs) for root key protection",
-          "Multi-party authorization for key management operations",
-          "Key usage auditing and monitoring"
-        ]
-      }
-    },
-    dataMinimization: {
-      strategy: "Collect and retain only necessary data",
-      implementation: [
-        "Clear data classification policy (critical, sensitive, internal, public)",
-        "Automatic data pruning based on retention policies",
-        "Data anonymization for analytics",
-        "Differential privacy techniques for aggregate data"
-      ]
-    },
-    accessControl: {
-      strategy: "Principle of least privilege",
-      implementation: [
-        "Role-based access control (RBAC) for all system components",
-        "Attribute-based access control (ABAC) for fine-grained permissions",
-        "Just-in-time access provisioning for administrative functions",
-        "Regular access reviews and automatic privilege expiration"
-      ]
-    }
+  encryption: {
+    algorithm: "AES-256",
+    keyRotation: "90 days"
   },
-  authenticationAndAuthorization: {
-    userAuthentication: {
-      strategy: "Multi-factor authentication",
-      implementation: [
-        "Password-based authentication with strong complexity requirements",
-        "Support for biometric authentication on mobile devices",
-        "Time-based one-time passwords (TOTP)",
-        "Risk-based authentication triggering additional verification for suspicious activities"
-      ]
-    },
-    apiSecurity: {
-      strategy: "Zero trust API security model",
-      implementation: [
-        "OAuth 2.0 with OpenID Connect for authentication",
-        "JWT with short expiration times for API authorization",
-        "API scope limitations based on user roles",
-        "Rate limiting to prevent abuse",
-        "API key rotation"
-      ]
-    },
-    sessionManagement: {
-      strategy: "Secure session handling",
-      implementation: [
-        "Server-side session validation",
-        "Automatic session expiration after inactivity",
-        "Ability to view and terminate active sessions",
-        "Session binding to device fingerprints"
-      ]
-    }
+  authentication: {
+    mfa: true,
+    sessionTimeout: "30 minutes"
   },
   secureDevelopment: {
-    secureSDLC: {
-      strategy: "Security integrated throughout development lifecycle",
-      implementation: [
-        "Security requirements defined at project initiation",
-        "Threat modeling during design phase",
-        "Static application security testing (SAST) integrated in CI/CD",
-        "Dynamic application security testing (DAST) in staging environment",
-        "Regular penetration testing by third parties",
-        "Dependency scanning for vulnerabilities"
-      ]
-    },
-    codeQuality: {
-      strategy: "Prevent security bugs through quality practices",
-      implementation: [
-        "Secure coding standards with automated enforcement",
-        "Peer code reviews with security checklist",
-        "Pre-commit hooks for sensitive data detection",
-        "Regular security training for developers"
-      ]
-    },
-    vulnerabilityManagement: {
-      strategy: "Proactive vulnerability identification and remediation",
-      implementation: [
-        "Bug bounty program for responsible disclosure",
-        "Defined SLAs for vulnerability remediation based on severity",
-        "Regular security assessments",
-        "Automated vulnerability scanning in production"
-      ]
-    }
+    codeSigning: true,
+    dependencyScanning: true
   },
   transactionSecurity: {
-    nonRepudiation: {
-      strategy: "Verifiable transaction trail",
-      implementation: [
-        "Digital signatures for all financial transactions",
-        "Immutable audit logs with cryptographic verification",
-        "Transaction confirmation notifications to users",
-        "Multi-party authorization for high-value transactions"
-      ]
-    },
-    fraudPrevention: {
-      strategy: "Multi-layered fraud detection",
-      implementation: [
-        "Machine learning models for anomaly detection",
-        "Behavioral biometrics to identify suspicious patterns",
-        "Velocity checks for transaction frequency",
-        "Real-time fraud scoring with configurable thresholds"
-      ]
-    },
-    reconciliation: {
-      strategy: "Automated transaction verification",
-      implementation: [
-        "End-of-day reconciliation with banking partners",
-        "Double-entry accounting system",
-        "Automated exception handling and alerting",
-        "Regular financial audits"
-      ]
-    }
+    fraudDetection: true,
+    rateLimiting: true
   },
   infrastructureSecurity: {
     networkSecurity: {
@@ -303,37 +140,9 @@ export const securityFramework: SecurityFramework = {
       ]
     }
   },
-  complianceAndPrivacy: {
-    regulatoryCompliance: {
-      strategy: "Designed for multi-jurisdiction compliance",
-      implementation: [
-        "PCI DSS compliance for payment handling",
-        "SOC 2 Type II certification for service organization controls",
-        "GDPR compliance for European users",
-        "CCPA compliance for California residents",
-        "Regular compliance audits and certification maintenance"
-      ]
-    },
-    privacyByDesign: {
-      strategy: "Privacy embedded into system architecture",
-      implementation: [
-        "Data Protection Impact Assessments (DPIA) for new features",
-        "Configurable data retention policies",
-        "User consent management system",
-        "Privacy preference center for users",
-        "Data portability support"
-      ]
-    },
-    transparencyAndControl: {
-      strategy: "User visibility and control over their data",
-      implementation: [
-        "Clear privacy notices with version control",
-        "Subject access request handling workflow",
-        "Right to be forgotten implementation",
-        "Data usage logs viewable by users",
-        "Export functionality for user data"
-      ]
-    }
+  compliance: {
+    gdpr: true,
+    pci: true
   },
   incidentResponse: {
     readiness: {
@@ -422,38 +231,34 @@ export const securityImplementationPriority: ImplementationPhase[] = [
   }
 ];
 
-export class SecurityFrameworkImpl {
-  private config: SecurityFramework;
+export class SecurityFrameworkImpl implements SecurityFramework {
+  constructor(private readonly config: SecurityFramework) {}
 
-  constructor(config: SecurityFramework) {
-    this.config = config;
+  get encryption(): EncryptionConfig {
+    return this.config.encryption;
   }
 
-  getDataProtection(): DataProtectionConfig {
-    return this.config.dataProtection;
+  get authentication(): AuthenticationConfig {
+    return this.config.authentication;
   }
 
-  getAuthenticationAndAuthorization(): AuthenticationConfig {
-    return this.config.authenticationAndAuthorization;
-  }
-
-  getSecureDevelopment(): SecureDevelopmentConfig {
+  get secureDevelopment(): SecureDevelopmentConfig {
     return this.config.secureDevelopment;
   }
 
-  getTransactionSecurity(): TransactionSecurityConfig {
+  get transactionSecurity(): TransactionSecurityConfig {
     return this.config.transactionSecurity;
   }
 
-  getInfrastructureSecurity(): InfrastructureSecurityConfig {
+  get infrastructureSecurity(): InfrastructureSecurityConfig {
     return this.config.infrastructureSecurity;
   }
 
-  getComplianceAndPrivacy(): ComplianceConfig {
-    return this.config.complianceAndPrivacy;
+  get compliance(): ComplianceConfig {
+    return this.config.compliance;
   }
 
-  getIncidentResponse(): IncidentResponseConfig {
+  get incidentResponse(): IncidentResponseConfig {
     return this.config.incidentResponse;
   }
 } 

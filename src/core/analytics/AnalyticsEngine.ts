@@ -6,8 +6,8 @@
  */
 
 export interface PrivacySettings {
-  anonymizationLevel: 'low' | 'medium' | 'high';
-  retentionPeriod: number; // days
+  dataRetention: string;
+  anonymization: boolean;
 }
 
 export interface PaymentData {
@@ -24,19 +24,16 @@ export interface CreditorMetrics {
     averagePayment: number;
     uniqueUsers: number;
   };
-  frequency: Record<string, number>;
-  consistency: {
-    regular: number;
-    irregular: number;
-    totalUsers: number;
+  frequency: {
+    daily: number;
+    weekly: number;
+    monthly: number;
+    occasional: number;
   };
+  consistency: number;
   growth: {
-    trend: 'increasing' | 'decreasing' | 'stable' | 'insufficient_data';
-    slope: number;
-    rSquared: number;
-    firstDay: string;
-    lastDay: string;
-    periodDays: number;
+    trend: number;
+    period: string;
   };
   earlyPayment: {
     early: number;
@@ -47,52 +44,43 @@ export interface CreditorMetrics {
 }
 
 export interface CreditorInsights {
-  creditorId: string;
-  timeframe: string;
-  dataRangeStart: string;
-  dataRangeEnd: string;
   metrics: CreditorMetrics;
-  insights: string[];
-  generatedAt: string;
+  recommendations: string[];
+  riskAssessment: {
+    level: "low" | "medium" | "high";
+    factors: string[];
+  };
 }
 
 export class AnalyticsEngine {
   private readonly timeframes = {
-    DAILY: 'daily',
-    WEEKLY: 'weekly',
-    MONTHLY: 'monthly',
-    QUARTERLY: 'quarterly',
-    YEARLY: 'yearly'
-  } as const;
+    day: 24 * 60 * 60 * 1000,
+    week: 7 * 24 * 60 * 60 * 1000,
+    month: 30 * 24 * 60 * 60 * 1000,
+    year: 365 * 24 * 60 * 60 * 1000
+  };
 
   constructor(
-    private readonly db: any, // Replace with actual database interface
+    private readonly db: any,
     private readonly privacySettings: PrivacySettings
   ) {}
 
-  async generateCreditorInsights(
-    creditorId: string,
-    timeframe: string = this.timeframes.MONTHLY
-  ): Promise<CreditorInsights> {
-    const creditor = await this.getCreditorById(creditorId);
-    if (!creditor) {
-      throw new Error(`Creditor with ID ${creditorId} not found`);
-    }
-
-    const accounts = await this.getCreditorAccounts(creditorId);
-    const paymentData = await this.getAnonymizedPaymentData(accounts, timeframe);
+  async generateCreditorInsights(userId: string): Promise<CreditorInsights> {
+    const paymentData = await this.getPaymentData(userId);
     const metrics = this.calculateCreditorMetrics(paymentData);
-    const insights = this.generateInsightsFromMetrics(metrics);
+    const recommendations = this.generateRecommendations(metrics);
+    const riskAssessment = this.assessRisk(metrics);
 
     return {
-      creditorId,
-      timeframe,
-      dataRangeStart: this.getTimeframeStart(timeframe),
-      dataRangeEnd: new Date().toISOString(),
       metrics,
-      insights,
-      generatedAt: new Date().toISOString()
+      recommendations,
+      riskAssessment
     };
+  }
+
+  private async getPaymentData(userId: string): Promise<PaymentData[]> {
+    // TODO: Implement actual database query
+    return [];
   }
 
   private calculateCreditorMetrics(paymentData: PaymentData[]): CreditorMetrics {
@@ -117,25 +105,51 @@ export class AnalyticsEngine {
     };
   }
 
-  private calculatePaymentFrequency(paymentsByUser: Record<string, PaymentData[]>): Record<string, number> {
-    const frequencies: Record<string, number> = {};
+  private groupByDate(paymentData: PaymentData[], timeframe: keyof typeof this.timeframes): Record<string, PaymentData[]> {
+    const grouped: Record<string, PaymentData[]> = {};
+    const timeframeMs = this.timeframes[timeframe];
 
-    Object.keys(paymentsByUser).forEach(userId => {
-      const payments = paymentsByUser[userId];
-      const frequency = this.calculateUserPaymentFrequency(payments);
-      frequencies[frequency] = (frequencies[frequency] || 0) + 1;
+    paymentData.forEach(payment => {
+      const date = new Date(payment.date);
+      const key = Math.floor(date.getTime() / timeframeMs).toString();
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(payment);
     });
 
-    const totalUsers = Object.keys(paymentsByUser).length;
-    const frequencyDistribution: Record<string, number> = {};
+    return grouped;
+  }
 
-    Object.keys(frequencies).forEach(freq => {
-      frequencyDistribution[freq] = parseFloat(
-        ((frequencies[freq] / totalUsers) * 100).toFixed(1)
-      );
+  private groupByUser(paymentData: PaymentData[]): Record<string, PaymentData[]> {
+    const grouped: Record<string, PaymentData[]> = {};
+
+    paymentData.forEach(payment => {
+      if (!grouped[payment.userId]) {
+        grouped[payment.userId] = [];
+      }
+      grouped[payment.userId].push(payment);
     });
 
-    return frequencyDistribution;
+    return grouped;
+  }
+
+  private calculatePaymentFrequency(paymentsByUser: Record<string, PaymentData[]>): {
+    daily: number;
+    weekly: number;
+    monthly: number;
+    occasional: number;
+  } {
+    const frequencies = Object.values(paymentsByUser).map(payments => 
+      this.calculateUserPaymentFrequency(payments)
+    );
+
+    return {
+      daily: frequencies.filter(f => f === 'daily').length,
+      weekly: frequencies.filter(f => f === 'weekly').length,
+      monthly: frequencies.filter(f => f === 'monthly').length,
+      occasional: frequencies.filter(f => f === 'occasional').length
+    };
   }
 
   private calculateUserPaymentFrequency(payments: PaymentData[]): string {
@@ -147,136 +161,65 @@ export class AnalyticsEngine {
     return 'occasional';
   }
 
-  private calculateConsistencyRatio(paymentsByUser: Record<string, PaymentData[]): {
-    regular: number;
-    irregular: number;
-    totalUsers: number;
-  } {
-    let regularUsers = 0;
-    let irregularUsers = 0;
+  private calculateConsistencyRatio(paymentsByUser: Record<string, PaymentData[]>): number {
+    const ratios = Object.values(paymentsByUser).map(payments => {
+      const dates = payments.map(p => new Date(p.date).getTime()).sort((a, b) => a - b);
+      if (dates.length < 2) return 0;
 
-    Object.keys(paymentsByUser).forEach(userId => {
-      const payments = paymentsByUser[userId];
-
-      if (payments.length < 3) {
-        irregularUsers++;
-        return;
+      const intervals = [];
+      for (let i = 1; i < dates.length; i++) {
+        intervals.push(dates[i] - dates[i - 1]);
       }
 
-      const isRegular = this.isPaymentPatternRegular(payments);
-      if (isRegular) {
-        regularUsers++;
-      } else {
-        irregularUsers++;
-      }
+      const avgInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+      const variance = intervals.reduce((sum, interval) => sum + Math.pow(interval - avgInterval, 2), 0) / intervals.length;
+      const stdDev = Math.sqrt(variance);
+
+      return 1 - (stdDev / avgInterval);
     });
 
-    const totalUsers = regularUsers + irregularUsers;
-
-    return {
-      regular: parseFloat(((regularUsers / totalUsers) * 100).toFixed(1)),
-      irregular: parseFloat(((irregularUsers / totalUsers) * 100).toFixed(1)),
-      totalUsers
-    };
-  }
-
-  private isPaymentPatternRegular(payments: PaymentData[]): boolean {
-    const sortedPayments = [...payments].sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    const intervals: number[] = [];
-    for (let i = 1; i < sortedPayments.length; i++) {
-      const current = new Date(sortedPayments[i].date);
-      const previous = new Date(sortedPayments[i-1].date);
-      const interval = Math.floor((current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24));
-      intervals.push(interval);
-    }
-
-    const avgInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
-    const variance = intervals.reduce((sum, interval) => {
-      return sum + Math.pow(interval - avgInterval, 2);
-    }, 0) / intervals.length;
-    const stdDev = Math.sqrt(variance);
-
-    return stdDev < (avgInterval / 2);
+    return parseFloat((ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length).toFixed(2));
   }
 
   private calculatePaymentTrend(paymentsByDay: Record<string, PaymentData[]>): {
-    trend: 'increasing' | 'decreasing' | 'stable' | 'insufficient_data';
-    slope: number;
-    rSquared: number;
-    firstDay: string;
-    lastDay: string;
-    periodDays: number;
+    trend: number;
+    period: string;
   } {
-    const daysList = Object.keys(paymentsByDay).sort();
-
-    if (daysList.length < 2) {
-      return { trend: 'insufficient_data', slope: 0, rSquared: 0, firstDay: '', lastDay: '', periodDays: 0 };
+    const days = Object.keys(paymentsByDay).sort((a, b) => parseInt(a) - parseInt(b));
+    if (days.length < 2) {
+      return { trend: 0, period: 'insufficient data' };
     }
 
-    const dailyTotals = daysList.map(day => ({
-      date: day,
-      total: paymentsByDay[day].reduce((sum, payment) => sum + payment.amount, 0)
-    }));
-
-    const regression = this.linearRegression(
-      dailyTotals.map((_, index) => index),
-      dailyTotals.map(day => day.total)
+    const amounts = days.map(day => 
+      paymentsByDay[day].reduce((sum, payment) => sum + payment.amount, 0)
     );
 
-    let trend: 'increasing' | 'decreasing' | 'stable';
-    if (regression.slope > 0.05) {
-      trend = 'increasing';
-    } else if (regression.slope < -0.05) {
-      trend = 'decreasing';
-    } else {
-      trend = 'stable';
+    const xMean = (days.length - 1) / 2;
+    const yMean = amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length;
+
+    let numerator = 0;
+    let denominator = 0;
+
+    for (let i = 0; i < days.length; i++) {
+      const x = i - xMean;
+      const y = amounts[i] - yMean;
+      numerator += x * y;
+      denominator += x * x;
     }
 
+    const trend = denominator === 0 ? 0 : numerator / denominator;
+    const period = this.determineTrendPeriod(trend);
+
     return {
-      trend,
-      slope: parseFloat(regression.slope.toFixed(3)),
-      rSquared: parseFloat(regression.rSquared.toFixed(3)),
-      firstDay: daysList[0],
-      lastDay: daysList[daysList.length - 1],
-      periodDays: daysList.length
+      trend: parseFloat(trend.toFixed(2)),
+      period
     };
   }
 
-  private linearRegression(x: number[], y: number[]): { slope: number; intercept: number; rSquared: number } {
-    const n = x.length;
-    let sumX = 0;
-    let sumY = 0;
-    let sumXY = 0;
-    let sumXX = 0;
-    let sumYY = 0;
-
-    for (let i = 0; i < n; i++) {
-      sumX += x[i];
-      sumY += y[i];
-      sumXY += x[i] * y[i];
-      sumXX += x[i] * x[i];
-      sumYY += y[i] * y[i];
-    }
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
-
-    const xMean = sumX / n;
-    const yMean = sumY / n;
-    let totalVariation = 0;
-    let explainedVariation = 0;
-
-    for (let i = 0; i < n; i++) {
-      totalVariation += Math.pow(y[i] - yMean, 2);
-      explainedVariation += Math.pow((slope * x[i] + intercept) - yMean, 2);
-    }
-
-    const rSquared = explainedVariation / totalVariation;
-
-    return { slope, intercept, rSquared };
+  private determineTrendPeriod(trend: number): string {
+    if (trend > 0.1) return 'growing';
+    if (trend < -0.1) return 'declining';
+    return 'stable';
   }
 
   private calculateEarlyPaymentRatio(paymentData: PaymentData[]): {
@@ -304,168 +247,55 @@ export class AnalyticsEngine {
     };
   }
 
-  private generateInsightsFromMetrics(metrics: CreditorMetrics): string[] {
-    const insights: string[] = [];
+  private generateRecommendations(metrics: CreditorMetrics): string[] {
+    const recommendations: string[] = [];
 
-    if (metrics.frequency.daily > 30) {
-      insights.push("A significant portion of your users (over 30%) make daily contributions via roundups, indicating strong engagement.");
+    if (metrics.earlyPayment.late > 20) {
+      recommendations.push("Consider implementing automatic payment reminders");
     }
 
-    if (metrics.consistency.regular > 70) {
-      insights.push("Most users demonstrate consistent payment patterns, suggesting the roundup approach encourages regular debt reduction.");
-    } else if (metrics.consistency.regular < 40) {
-      insights.push("Many users show irregular payment patterns. Consider implementing engagement strategies to increase consistency.");
+    if (metrics.consistency < 0.7) {
+      recommendations.push("Offer incentives for consistent payment behavior");
     }
 
-    if (metrics.growth.trend === 'increasing') {
-      insights.push(`Payment amounts are trending upward over the last ${metrics.growth.periodDays} days, indicating growing user confidence in your debt products.`);
-    } else if (metrics.growth.trend === 'decreasing') {
-      insights.push(`Payment amounts have been decreasing over the last ${metrics.growth.periodDays} days. This may warrant further investigation into user satisfaction.`);
+    if (metrics.growth.trend < 0) {
+      recommendations.push("Review payment terms and conditions");
     }
 
-    if (metrics.earlyPayment.early > 50) {
-      insights.push(`Over half of payments are made before due dates, with users paying an average of ${metrics.earlyPayment.averageDaysEarly} days early, reducing interest costs.`);
+    return recommendations;
+  }
+
+  private assessRisk(metrics: CreditorMetrics): {
+    level: "low" | "medium" | "high";
+    factors: string[];
+  } {
+    const factors: string[] = [];
+    let riskScore = 0;
+
+    if (metrics.earlyPayment.late > 30) {
+      riskScore += 2;
+      factors.push("High rate of late payments");
     }
 
-    insights.push(`Users made an average payment of $${metrics.summary.averagePayment} through the MicroRepay system, with ${metrics.summary.totalPayments} total payments processed.`);
-
-    return insights;
-  }
-
-  private groupByDate(payments: PaymentData[], granularity: 'day' | 'week' | 'month' = 'day'): Record<string, PaymentData[]> {
-    const grouped: Record<string, PaymentData[]> = {};
-
-    payments.forEach(payment => {
-      const date = new Date(payment.date);
-      let key: string;
-
-      switch (granularity) {
-        case 'day':
-          key = date.toISOString().split('T')[0];
-          break;
-        case 'week':
-          const januaryFirst = new Date(date.getFullYear(), 0, 1);
-          const weekNumber = Math.ceil(
-            ((date.getTime() - januaryFirst.getTime()) / 86400000 + januaryFirst.getDay()) / 7
-          );
-          key = `${date.getFullYear()}-W${weekNumber}`;
-          break;
-        case 'month':
-          key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-          break;
-        default:
-          key = date.toISOString().split('T')[0];
-      }
-
-      if (!grouped[key]) {
-        grouped[key] = [];
-      }
-
-      grouped[key].push(payment);
-    });
-
-    return grouped;
-  }
-
-  private groupByUser(payments: PaymentData[]): Record<string, PaymentData[]> {
-    const grouped: Record<string, PaymentData[]> = {};
-
-    payments.forEach(payment => {
-      if (!grouped[payment.userId]) {
-        grouped[payment.userId] = [];
-      }
-
-      grouped[payment.userId].push(payment);
-    });
-
-    return grouped;
-  }
-
-  private anonymizeUserData(userData: any): any {
-    const anonymized = { ...userData };
-
-    delete anonymized.name;
-    delete anonymized.email;
-    delete anonymized.phoneNumber;
-    delete anonymized.address;
-    delete anonymized.socialSecurityNumber;
-
-    anonymized.userId = this.generatePseudonym(userData.userId);
-
-    return anonymized;
-  }
-
-  private generatePseudonym(userId: string): string {
-    return `user_${this.hashCode(userId).toString(16)}`;
-  }
-
-  private hashCode(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash);
-  }
-
-  private async getAnonymizedPaymentData(accounts: string[], timeframe: string): Promise<PaymentData[]> {
-    // In a real implementation, this would fetch from a database
-    // For this example, return mock data
-    return [
-      {
-        userId: this.generatePseudonym("user123"),
-        amount: 25.75,
-        date: "2025-05-01T14:23:45Z",
-        daysBeforeDue: 5
-      },
-      {
-        userId: this.generatePseudonym("user456"),
-        amount: 10.50,
-        date: "2025-05-02T09:12:30Z",
-        daysBeforeDue: 2
-      },
-      {
-        userId: this.generatePseudonym("user789"),
-        amount: 15.25,
-        date: "2025-05-03T16:45:20Z",
-        daysBeforeDue: -2
-      }
-    ];
-  }
-
-  private getTimeframeStart(timeframe: string): string {
-    const now = new Date();
-    const start = new Date(now);
-
-    switch (timeframe) {
-      case this.timeframes.DAILY:
-        start.setDate(now.getDate() - 1);
-        break;
-      case this.timeframes.WEEKLY:
-        start.setDate(now.getDate() - 7);
-        break;
-      case this.timeframes.MONTHLY:
-        start.setMonth(now.getMonth() - 1);
-        break;
-      case this.timeframes.QUARTERLY:
-        start.setMonth(now.getMonth() - 3);
-        break;
-      case this.timeframes.YEARLY:
-        start.setFullYear(now.getFullYear() - 1);
-        break;
-      default:
-        start.setMonth(now.getMonth() - 1);
+    if (metrics.consistency < 0.5) {
+      riskScore += 1;
+      factors.push("Low payment consistency");
     }
 
-    return start.toISOString();
-  }
+    if (metrics.growth.trend < -0.2) {
+      riskScore += 1;
+      factors.push("Declining payment trend");
+    }
 
-  private async getCreditorById(creditorId: string): Promise<any> {
-    return { id: creditorId, name: "Example Bank" };
-  }
+    let level: "low" | "medium" | "high";
+    if (riskScore >= 3) {
+      level = "high";
+    } else if (riskScore >= 1) {
+      level = "medium";
+    } else {
+      level = "low";
+    }
 
-  private async getCreditorAccounts(creditorId: string): Promise<string[]> {
-    return ["acc123", "acc456", "acc789"];
+    return { level, factors };
   }
 } 

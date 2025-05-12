@@ -9,11 +9,13 @@
  * - Optimization Engine
  */
 
-import { SecurityFrameworkImpl, SecurityFramework } from './security/SecurityFramework';
+import { SecurityFrameworkImpl } from './security/SecurityFramework';
+import { CreditorIntegration } from './integration/CreditorIntegration';
+import { OptimizationEngine } from './optimization/OptimizationEngine';
 import { AnalyticsEngine } from './analytics/AnalyticsEngine';
 import { GamificationSystem } from './gamification/GamificationSystem';
-import { CreditorIntegration } from './integration/CreditorIntegration';
-import { OptimizationEngine, DebtAccount, PaymentSchedule } from './optimization/OptimizationEngine';
+import { Database } from './database/Database';
+import { DebtAccount, PaymentSchedule } from './optimization/OptimizationEngine';
 
 export interface UserProfile {
   id: string;
@@ -37,26 +39,124 @@ export interface RoundupTransaction {
 }
 
 export class MicroRepayService {
-  private securityFramework: SecurityFrameworkImpl;
-  private analyticsEngine: AnalyticsEngine;
-  private gamificationSystem: GamificationSystem;
-  private creditorIntegration: CreditorIntegration;
-  private optimizationEngine: OptimizationEngine;
+  private readonly securityFramework: SecurityFrameworkImpl;
+  private readonly creditorIntegration: CreditorIntegration;
+  private readonly optimizationEngine: OptimizationEngine;
+  private readonly analyticsEngine: AnalyticsEngine;
+  private readonly gamificationSystem: GamificationSystem;
+  private readonly database: Database;
 
-  constructor(
-    securityConfig: SecurityFramework,
-    apiKeys: Record<string, string>,
-    creditorConfig: { creditors: any[] },
-    db: any // Database interface
-  ) {
-    this.securityFramework = new SecurityFrameworkImpl(securityConfig);
-    this.analyticsEngine = new AnalyticsEngine(db, {
-      anonymizationLevel: 'medium',
-      retentionPeriod: 90
+  constructor() {
+    // Initialize security framework
+    this.securityFramework = new SecurityFrameworkImpl({
+      encryption: {
+        algorithm: 'AES-256-GCM',
+        keyRotation: '30d'
+      },
+      authentication: {
+        mfa: true,
+        sessionTimeout: '3600'
+      },
+      secureDevelopment: {
+        codeSigning: true,
+        dependencyScanning: true
+      },
+      transactionSecurity: {
+        fraudDetection: true,
+        rateLimiting: true
+      },
+      infrastructureSecurity: {
+        networkSecurity: {
+          strategy: 'Defense in depth',
+          implementation: [
+            'Network segmentation',
+            'WAF',
+            'DDoS protection'
+          ]
+        },
+        cloudSecurity: {
+          strategy: 'Secure cloud configuration',
+          implementation: [
+            'IaC',
+            'Immutable infrastructure'
+          ]
+        },
+        continuousMonitoring: {
+          strategy: 'Real-time security visibility',
+          implementation: [
+            'SIEM',
+            'IDS/IPS'
+          ]
+        }
+      },
+      compliance: {
+        gdpr: true,
+        pci: true
+      },
+      incidentResponse: {
+        readiness: {
+          strategy: 'Proactive incident preparation',
+          implementation: ['Incident response plan']
+        },
+        detection: {
+          strategy: 'Rapid incident identification',
+          implementation: ['Automated alerting']
+        },
+        response: {
+          strategy: 'Effective incident containment',
+          implementation: ['Isolation procedures']
+        },
+        recovery: {
+          strategy: 'Resilient service restoration',
+          implementation: ['Disaster recovery']
+        }
+      }
     });
-    this.gamificationSystem = new GamificationSystem(db);
-    this.creditorIntegration = new CreditorIntegration(apiKeys, creditorConfig);
+
+    // Initialize database
+    this.database = new Database({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      username: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'postgres',
+      database: process.env.DB_NAME || 'microrepay'
+    });
+
+    // Initialize creditor integration
+    this.creditorIntegration = new CreditorIntegration({
+      apiKey: process.env.CREDITOR_API_KEY || '',
+      apiUrl: process.env.CREDITOR_API_URL || '',
+      timeout: 30000
+    });
+
+    // Initialize optimization engine
     this.optimizationEngine = new OptimizationEngine();
+
+    // Initialize analytics engine
+    this.analyticsEngine = new AnalyticsEngine(
+      this.database,
+      {
+        dataRetention: '90d',
+        anonymization: true
+      }
+    );
+
+    // Initialize gamification system
+    this.gamificationSystem = new GamificationSystem({
+      pointsPerPayment: 10,
+      bonusPoints: {
+        earlyPayment: 5,
+        consistentPayment: 15,
+        milestoneAchievement: 50
+      },
+      levels: [
+        { level: 1, points: 0 },
+        { level: 2, points: 100 },
+        { level: 3, points: 500 },
+        { level: 4, points: 1000 },
+        { level: 5, points: 2000 }
+      ]
+    });
   }
 
   async processRoundup(
@@ -174,8 +274,13 @@ export class MicroRepayService {
     return this.optimizationEngine.getAvailableStrategies();
   }
 
-  async getCreditorInsights(userId: string) {
-    return this.analyticsEngine.generateCreditorInsights(userId);
+  async getCreditorInsights(userId: string): Promise<any> {
+    try {
+      return await this.analyticsEngine.generateCreditorInsights(userId);
+    } catch (error) {
+      console.error('Failed to generate creditor insights:', error);
+      return null;
+    }
   }
 
   async getUserStats(userId: string) {
@@ -184,5 +289,67 @@ export class MicroRepayService {
 
   async getLeaderboard() {
     return this.gamificationSystem.getLeaderboard();
+  }
+
+  async makePayment(userId: string, creditorId: string, amount: number): Promise<boolean> {
+    try {
+      // Validate payment request
+      if (!this.securityFramework.transactionSecurity.fraudDetection) {
+        throw new Error('Transaction validation failed');
+      }
+
+      // Process payment through creditor integration
+      const paymentResult = await this.creditorIntegration.makePayment(
+        userId,
+        creditorId,
+        'acc123', // TODO: Get actual account ID
+        amount
+      );
+
+      if (paymentResult.success) {
+        // Update analytics
+        await this.analyticsEngine.generateCreditorInsights(userId);
+
+        // Update gamification points
+        await this.gamificationSystem.addPoints(userId, 10, 'Payment completed');
+
+        // Optimize future payments
+        const debtAccounts: DebtAccount[] = await this.getDebtAccounts(userId);
+        await this.optimizationEngine.optimizePayments('hybrid', debtAccounts, amount, new Date().toISOString());
+
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Payment failed:', error);
+      return false;
+    }
+  }
+
+  async getPaymentHistory(userId: string): Promise<any[]> {
+    try {
+      return await this.database.query(
+        'SELECT * FROM payments WHERE user_id = $1 ORDER BY created_at DESC',
+        [userId]
+      );
+    } catch (error) {
+      console.error('Failed to fetch payment history:', error);
+      return [];
+    }
+  }
+
+  async getGamificationStatus(userId: string): Promise<any> {
+    try {
+      return await this.gamificationSystem.getUserStats(userId);
+    } catch (error) {
+      console.error('Failed to fetch gamification status:', error);
+      return null;
+    }
+  }
+
+  private async getDebtAccounts(userId: string): Promise<DebtAccount[]> {
+    // TODO: Implement actual database query
+    return [];
   }
 } 

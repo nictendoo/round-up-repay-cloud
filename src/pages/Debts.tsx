@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { CircleDollarSign, TrendingDown, Plus } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -6,15 +5,23 @@ import { getMockDebts } from "@/services/mockData";
 import { Debt } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import PaymentDialog from "@/components/PaymentDialog";
 
 const Debts = () => {
   const [debts, setDebts] = useState<Debt[]>(getMockDebts());
+  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   
   // Calculate total debt and paid-off amounts
   const totalCurrentDebt = debts.reduce((sum, debt) => sum + debt.currentBalance, 0);
   const totalOriginalDebt = debts.reduce((sum, debt) => sum + debt.originalBalance, 0);
   const totalPaidOff = totalOriginalDebt - totalCurrentDebt;
   const percentPaidOff = (totalPaidOff / totalOriginalDebt) * 100;
+
+  const handlePaymentComplete = () => {
+    // Refresh the debts list
+    setDebts(getMockDebts());
+  };
 
   return (
     <Layout>
@@ -100,7 +107,14 @@ const Debts = () => {
                       <Button size="sm" variant="outline">
                         Payment History
                       </Button>
-                      <Button size="sm" className="bg-primary-gradient hover:opacity-90">
+                      <Button 
+                        size="sm" 
+                        className="bg-primary-gradient hover:opacity-90"
+                        onClick={() => {
+                          setSelectedDebt(debt);
+                          setIsPaymentDialogOpen(true);
+                        }}
+                      >
                         Make Payment
                       </Button>
                     </div>
@@ -125,6 +139,18 @@ const Debts = () => {
           </div>
         )}
       </div>
+
+      {selectedDebt && (
+        <PaymentDialog
+          debt={selectedDebt}
+          isOpen={isPaymentDialogOpen}
+          onClose={() => {
+            setIsPaymentDialogOpen(false);
+            setSelectedDebt(null);
+          }}
+          onPaymentComplete={handlePaymentComplete}
+        />
+      )}
     </Layout>
   );
 };

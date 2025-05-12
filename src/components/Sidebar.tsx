@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { 
   CreditCard,
   Home,
@@ -8,23 +7,39 @@ import {
   CircleDollarSign,
   Trophy,
   Settings,
-  Menu
+  Menu,
+  User,
+  Building,
+  LogOut
 } from "lucide-react";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState<{name: string; email: string} | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   const toggleSidebar = () => {
     setCollapsed(!collapsed);
   };
+  
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
 
   const navItems = [
-    { name: "Dashboard", path: "/", icon: <Home className="w-5 h-5" /> },
+    { name: "Dashboard", path: "/dashboard", icon: <Home className="w-5 h-5" /> },
     { name: "Transactions", path: "/transactions", icon: <CreditCard className="w-5 h-5" /> },
     { name: "Debts", path: "/debts", icon: <CircleDollarSign className="w-5 h-5" /> },
-    { name: "Analytics", path: "/analytics", icon: <BarChart3 className="w-5 h-5" /> },
-    { name: "Achievements", path: "/achievements", icon: <Trophy className="w-5 h-5" /> },
-    { name: "Settings", path: "/settings", icon: <Settings className="w-5 h-5" /> },
+    { name: "Connect Bank", path: "/connect-bank", icon: <Building className="w-5 h-5" /> },
+    { name: "Profile", path: "/profile", icon: <User className="w-5 h-5" /> },
   ];
 
   return (
@@ -47,8 +62,15 @@ const Sidebar = () => {
         </button>
       </div>
 
-      <nav className="mt-8">
-        <ul className="space-y-2">
+      {!collapsed && user && (
+        <div className="px-4 py-2 border-b border-gray-200 mb-4">
+          <p className="font-medium text-sm truncate">{user.name}</p>
+          <p className="text-xs text-gray-500 truncate">{user.email}</p>
+        </div>
+      )}
+
+      <nav className="mt-4">
+        <ul className="space-y-1">
           {navItems.map((item) => (
             <li key={item.name}>
               <NavLink
@@ -68,6 +90,19 @@ const Sidebar = () => {
           ))}
         </ul>
       </nav>
+      
+      {/* Logout at bottom */}
+      <div className="absolute bottom-8 w-full px-4">
+        <button
+          onClick={handleLogout}
+          className={`flex items-center w-full px-4 py-3 text-gray-600 hover:bg-gray-100 transition-colors ${
+            collapsed ? "justify-center" : ""
+          }`}
+        >
+          <LogOut className="w-5 h-5" />
+          {!collapsed && <span className="ml-3">Logout</span>}
+        </button>
+      </div>
     </aside>
   );
 };

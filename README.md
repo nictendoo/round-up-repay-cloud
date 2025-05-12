@@ -62,7 +62,29 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/1d688f66-af4a-4dd7-9594-8c5aa3ec1555) and click on Share -> Publish.
+### Automatic Deployment with GitHub Actions
+
+This project is configured with continuous deployment using GitHub Actions. Any changes pushed to the `main` branch will be automatically deployed to Firebase Hosting. The deployed app will be available at your Firebase project URL (https://microrepay-app.web.app).
+
+#### Setup Requirements for CI/CD:
+
+1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+2. Add the following secrets to your GitHub repository:
+   - `FIREBASE_SERVICE_ACCOUNT`: Firebase service account credentials (obtainable from Firebase console)
+3. Ensure your Firebase project ID is set correctly in `.firebaserc` and `firebase.json`
+
+### Manual Deployment
+
+You can still manually deploy this project:
+
+1. Simply open [Lovable](https://lovable.dev/projects/1d688f66-af4a-4dd7-9594-8c5aa3ec1555) and click on Share -> Publish.
+2. Or use the Firebase CLI:
+   ```
+   npm install -g firebase-tools
+   firebase login
+   npm run build
+   firebase deploy
+   ```
 
 ## Can I connect a custom domain to my Lovable project?
 

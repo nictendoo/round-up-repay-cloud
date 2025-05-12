@@ -59,54 +59,10 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
-- Firebase (Authentication, Firestore, Hosting)
-- Express.js (Backend API)
-
-## Setting up Firebase Admin SDK
-
-To use the Firebase Admin SDK for server-side functionality:
-
-1. Go to your Firebase project console: https://console.firebase.google.com/
-2. Go to Project Settings > Service accounts
-3. Click "Generate new private key" and save the JSON file
-4. Rename the file to `serviceAccountKey.json` and place it in the `server` directory
-5. For production, set the entire contents of this file as an environment variable named `FIREBASE_SERVICE_ACCOUNT`
-
-To run the server:
-
-```sh
-# Development mode with auto-restart
-npm run dev:server
-
-# Production mode
-npm run server
-```
 
 ## How can I deploy this project?
 
-### Automatic Deployment with GitHub Actions
-
-This project is configured with continuous deployment using GitHub Actions. Any changes pushed to the `main` branch will be automatically deployed to Firebase Hosting. The deployed app will be available at your Firebase project URL (https://microrepay-app.web.app).
-
-#### Setup Requirements for CI/CD:
-
-1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
-2. Add the following secrets to your GitHub repository:
-   - `FIREBASE_SERVICE_ACCOUNT`: Firebase service account credentials (obtainable from Firebase console)
-3. Ensure your Firebase project ID is set correctly in `.firebaserc` and `firebase.json`
-
-### Manual Deployment
-
-You can still manually deploy this project:
-
-1. Simply open [Lovable](https://lovable.dev/projects/1d688f66-af4a-4dd7-9594-8c5aa3ec1555) and click on Share -> Publish.
-2. Or use the Firebase CLI:
-   ```
-   npm install -g firebase-tools
-   firebase login
-   npm run build
-   firebase deploy
-   ```
+Simply open [Lovable](https://lovable.dev/projects/1d688f66-af4a-4dd7-9594-8c5aa3ec1555) and click on Share -> Publish.
 
 ## Can I connect a custom domain to my Lovable project?
 

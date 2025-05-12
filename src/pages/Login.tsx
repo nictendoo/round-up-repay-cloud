@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -13,7 +12,6 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,19 +28,27 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      await login(email, password);
-      
-      toast({
-        title: "Login successful",
-        description: "Welcome back to MicroRepay!",
-      });
-      
-      navigate("/dashboard");
+      // TODO: Replace with actual authentication API call
+      // For now, mock successful login for demo purposes
+      setTimeout(() => {
+        // Store user info in localStorage
+        localStorage.setItem("user", JSON.stringify({
+          id: "user123",
+          email,
+          name: "Test User",
+        }));
+        
+        toast({
+          title: "Login successful",
+          description: "Welcome back to MicroRepay!",
+        });
+        
+        navigate("/dashboard");
+      }, 1000);
     } catch (error) {
-      console.error('Login error:', error);
       toast({
         title: "Login failed",
-        description: "Invalid email or password. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {

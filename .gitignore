@@ -31,8 +31,3 @@ coverage/
 # Temporary files
 tmp/
 temp/
-
-# Firebase
-server/serviceAccountKey.json
-firebase-debug.log
-.firebase/

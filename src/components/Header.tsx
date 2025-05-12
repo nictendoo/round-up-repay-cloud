@@ -11,20 +11,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [notifications, setNotifications] = useState(3);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const navigate = useNavigate();
-  const { currentUser, userProfile, logout } = useAuth();
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout error:", error);
+  useEffect(() => {
+    // Get user data from localStorage
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/login");
   };
 
   const getInitials = (name: string) => {
@@ -55,7 +58,7 @@ const Header = () => {
           )}
         </Button>
 
-        {currentUser && (
+        {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -63,9 +66,9 @@ const Header = () => {
                 className="relative h-8 w-8 rounded-full focus-visible:ring-offset-0"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={userProfile?.avatar || ""} alt={userProfile?.name || currentUser.displayName || ""} />
+                  <AvatarImage src="" alt={user.name} />
                   <AvatarFallback className="bg-primary-gradient text-white">
-                    {getInitials(userProfile?.name || currentUser.displayName || "")}
+                    {getInitials(user.name)}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -73,8 +76,8 @@ const Header = () => {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{userProfile?.name || currentUser.displayName}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{currentUser.email}</p>
+                  <p className="text-sm font-medium leading-none">{user.name}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

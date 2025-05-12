@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { 
   CreditCard,
@@ -12,24 +12,26 @@ import {
   Building,
   LogOut
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState<{name: string; email: string} | null>(null);
   const navigate = useNavigate();
-  const { currentUser, userProfile, logout } = useAuth();
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   const toggleSidebar = () => {
     setCollapsed(!collapsed);
   };
   
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate("/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/login");
   };
 
   const navItems = [
@@ -60,10 +62,10 @@ const Sidebar = () => {
         </button>
       </div>
 
-      {!collapsed && currentUser && (
+      {!collapsed && user && (
         <div className="px-4 py-2 border-b border-gray-200 mb-4">
-          <p className="font-medium text-sm truncate">{userProfile?.name || currentUser.displayName}</p>
-          <p className="text-xs text-gray-500 truncate">{currentUser.email}</p>
+          <p className="font-medium text-sm truncate">{user.name}</p>
+          <p className="text-xs text-gray-500 truncate">{user.email}</p>
         </div>
       )}
 

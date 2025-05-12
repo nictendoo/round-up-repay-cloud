@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
   const [name, setName] = useState("");
@@ -16,6 +17,7 @@ const Register = () => {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,27 +53,19 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      // TODO: Replace with actual registration API call
-      // For now, mock successful registration for demo purposes
-      setTimeout(() => {
-        // Store user info in localStorage
-        localStorage.setItem("user", JSON.stringify({
-          id: `user_${Date.now()}`,
-          name,
-          email,
-        }));
-        
-        toast({
-          title: "Registration successful",
-          description: "Welcome to MicroRepay! Let's get you started.",
-        });
-        
-        navigate("/onboarding");
-      }, 1000);
+      await register(email, password, name);
+      
+      toast({
+        title: "Registration successful",
+        description: "Welcome to MicroRepay! Let's get you started.",
+      });
+      
+      navigate("/onboarding");
     } catch (error) {
+      console.error('Registration error:', error);
       toast({
         title: "Registration failed",
-        description: error instanceof Error ? error.message : "Something went wrong",
+        description: "This email may already be in use or there was an error with your information.",
         variant: "destructive",
       });
     } finally {

@@ -59,6 +59,28 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Firebase (Authentication, Firestore, Hosting)
+- Express.js (Backend API)
+
+## Setting up Firebase Admin SDK
+
+To use the Firebase Admin SDK for server-side functionality:
+
+1. Go to your Firebase project console: https://console.firebase.google.com/
+2. Go to Project Settings > Service accounts
+3. Click "Generate new private key" and save the JSON file
+4. Rename the file to `serviceAccountKey.json` and place it in the `server` directory
+5. For production, set the entire contents of this file as an environment variable named `FIREBASE_SERVICE_ACCOUNT`
+
+To run the server:
+
+```sh
+# Development mode with auto-restart
+npm run dev:server
+
+# Production mode
+npm run server
+```
 
 ## How can I deploy this project?
 
